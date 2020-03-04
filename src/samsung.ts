@@ -105,7 +105,9 @@ class Samsung {
       } else {
         const token = (res && typeof res !== 'string' && res.data && res.data.token && res.data.token) || null
         this.LOGGER.log('got token', String(token), 'getToken')
+
         this.TOKEN = token || ''
+        this.WS_URL += `${this.TOKEN !== '' ? ` &token=${this.TOKEN}` : ''}`;
         if (this.SAVE_TOKEN && token) {
           this._saveTokenToFile(token)
           done(token)
