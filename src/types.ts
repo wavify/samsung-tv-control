@@ -17,6 +17,8 @@ export interface Configuration {
   port?: number
   /** Autosave token (Default: false) */
   saveToken?: boolean
+  /** Token save file path (Default: path.join(__dirname, 'token.txt')) */
+  tokenFile?: string
 }
 
 export interface App {

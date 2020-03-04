@@ -28,7 +28,7 @@ class Samsung {
   private NAME_APP: string
   private LOGGER: Logger
   private SAVE_TOKEN: boolean
-  private TOKEN_FILE = path.join(__dirname, 'token.txt')
+  private TOKEN_FILE: string
   private WS_URL: string
   private ws: WebSocket | null = null
   private wsTimeout: NodeJS.Timeout | null = null
@@ -48,6 +48,7 @@ class Samsung {
     this.TOKEN = config.token || ''
     this.NAME_APP = Buffer.from(config.nameApp || 'NodeJS Remote').toString('base64')
     this.SAVE_TOKEN = config.saveToken || false
+    this.TOKEN_FILE = config.tokenFile || path.join(__dirname, 'token.txt')
     // legacy 55000
     this.APP_STRING = config.appString || 'iphone..iapp.samsung'
     this.TV_APP_STRING = config.tvAppString || 'iphone.UE40NU7400.iapp.samsung'
@@ -253,7 +254,7 @@ class Samsung {
     })
   }
 
-  public isAvaliable(): Promise<string> {
+  public isAvaliable(): Promise<number> {
     return new Promise((resolve, reject) => {
       request.get(
         { url: `http://${this.IP}:8001${this.PORT === 55000 ? '/ms/1.0/' : '/api/v2/'}`, timeout: 3000 },
@@ -264,10 +265,14 @@ class Samsung {
               { request: res.request, body: res.body as string, code: res.statusCode },
               'isAvaliable'
             )
-            resolve('TV is avaliable')
+            let status = 1;
+            if(JSON.parse(res.body).device.PowerState !== 'on'){
+              status = 0;
+            }
+            resolve(status);
           } else {
             this.LOGGER.error('TV is avaliable', { err }, 'isAvaliable')
-            reject('No response from TV')
+            reject(-1)
           }
         }
       )
@@ -343,17 +348,7 @@ class Samsung {
       this.LOGGER.log('data: ', JSON.stringify(data, null, 2), 'ws.on message')
 
       if (done) {
-        done(null, data)
-      }
-
-      if (done && (data.event === command.params.event || data.event === eventHandle)) {
-        this.LOGGER.log('if correct event', JSON.stringify(data, null, 2), 'ws.on message')
-        done(null, data)
-      }
-
-      if (data.event !== 'ms.channel.connect') {
-        this.LOGGER.log('if not correct event', JSON.stringify(data, null, 2), 'ws.on message')
-        // this.ws.close()
+        return done(null, data)
       }
 
       // TODO, additional check on avaliable instead of ws.open
@@ -372,7 +367,7 @@ class Samsung {
       console.error(errorMsg)
       this.LOGGER.error(errorMsg, err, 'ws.on error')
       if (done) {
-        done(err, null)
+        return done(err, null)
       }
     })
 
@@ -522,13 +517,20 @@ class Samsung {
   }
 
   private _saveTokenToFile(token: string) {
-    try {
-      fs.accessSync(this.TOKEN_FILE, fs.constants.F_OK)
-      console.log('File suss!')
-      fs.writeFileSync(this.TOKEN_FILE, token)
-    } catch (err) {
-      console.log('File error!')
-      this.LOGGER.error('catch fil esave', err, '_saveTokenToFile')
+    console.log("file path: ",this.TOKEN_FILE);
+    try{
+        fs.accessSync(this.TOKEN_FILE, fs.constants.F_OK);
+    }
+    catch (err) {
+        console.log("File not exist or don't have permissions");
+    }
+    console.log('File suss!');
+    try{
+        fs.writeFileSync(this.TOKEN_FILE, token);
+    }
+    catch (err) {
+        console.log('File error!');
+        this.LOGGER.error('catch fil esave', err, '_saveTokenToFile');
     }
   }
 }
